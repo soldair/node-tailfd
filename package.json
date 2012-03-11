@@ -1,0 +1,32 @@
+{
+  "name": "tailfd",
+  "description": "tail file descriptors that are referenced by a watched path or were referenced by a watched path for as long as they are still changing",
+  "version": "0.0.1",
+  "author": "Ryan Day <soldair@gmail.com>",
+  "keywords": [
+    "watch",
+    "tail",
+    "descriptors",
+    "log",
+    "fs"
+  ],
+  "main": "./tail.js",
+  "homepage": "http://github.com/soldair/node-tailfd",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/soldair/node-tailfd.git"
+  },
+  "scripts": {
+    "test": "./test.sh"
+  },
+  "devDependencies": {
+    "tap": "*",
+    "jshint": "0.5.x"
+  },
+  "engines": {
+    "node": ">=0.6.0"
+  },
+  "dependencies": {
+	"watchfd":"0.0.x"
+  }
+}
