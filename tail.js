@@ -76,7 +76,6 @@ exports.tail = function(log,options,cb){
   var first = 1;
   //start watching
   watch = watchfd.watch(log,options,function(stat,prev,data){
-    if(cb) cb.apply(this,arguments);
     if(!tails[stat.ino]) {
       tails[stat.ino] = tailDescriptor(data);
       tails[stat.ino].pos = stat.size;
@@ -127,6 +126,19 @@ exports.tail = function(log,options,cb){
       //cleanup queue will be in queue process.
     }
   });
+  
+  watch.on('data',function(buffer,tailInfo){
+
+    tailInfo.buf += buffer.toString();
+    var lines = tailInfo.buf.split(options.delimiter||"\n");
+    tailInfo.buf = lines.pop();
+
+    for(var i=0,j=lines.length;i<j;++i) {
+      watch.emit('line',lines[i],tailInfo);
+      //call user specified callback
+      if(cb) cb.call(this,lines[i],tailInfo);
+    }
+  });
 
   return watch;
 };
@@ -135,11 +147,11 @@ function tailDescriptor(data){
   var o = {
     pos:0,
     fd:data.fd,
-    firstline:1
+    firstline:1,
+    buf:''
   };
 
   return o;
 }
-
 
 
