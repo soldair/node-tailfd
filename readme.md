@@ -13,6 +13,8 @@ active is defined by a timeout since last event. file descriptors that become in
 
 ## use
 
+you can tail a file like this.
+
 	```js
 	var tail = require('tailfd').tail,
 	watcher = tail('/some.log',function(line,tailInfo){
@@ -94,24 +96,24 @@ tailfd.tail(filename, [options], listener)
 #### events inherited from watchfd
 
 - change
-		fs.Stats cur, fs.Stats prev
+	- fs.Stats cur, fs.Stats prev
 - open
-		fs.Stats cur,{fd:file descriptor,stat:fs.Stats cur}
+	- fs.Stats cur,{fd:file descriptor,stat:fs.Stats cur}
 - unlink
-                fs.Stats cur,{fd:file descriptor,stat:fs.Stats cur}
+	- fs.Stats cur,{fd:file descriptor,stat:fs.Stats cur}
 - timeout
-                fs.Stats cur,{fd:file descriptor,stat:fs.Stats cur}
+	- fs.Stats cur,{fd:file descriptor,stat:fs.Stats cur}
 
 ### tailInfo properties
 
 - stat
-    instanceof fs.Stats
+	- instanceof fs.Stats
 - pos
-    current seek position in the file
+	- current seek position in the file
 - fd
-    file descriptor being tailed
+	- file descriptor being tailed
 - buf
-    string containing the last data fragment from delimiter parsing
+	- string containing the last data fragment from delimiter parsing
 
 
 #### windows support problems
