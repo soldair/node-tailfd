@@ -145,9 +145,9 @@ exports.tail = function(log,options,cb){
 
 function tailDescriptor(data){
   var o = {
+    stat:null,
     pos:0,
     fd:data.fd,
-    firstline:1,
     buf:''
   };
 
