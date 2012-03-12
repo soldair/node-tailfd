@@ -1,6 +1,6 @@
 {
   "name": "tailfd",
-  "description": "tail file descriptors that are referenced by a watched path or were referenced by a watched path for as long as they are still changing",
+  "description": "Tail a file. it should work great. This will continue to work even if a file is unlinked rotated or truncated. It is also ok if the path doesnt exist before watching it",
   "version": "0.0.1",
   "author": "Ryan Day <soldair@gmail.com>",
   "keywords": [
