@@ -1,22 +1,25 @@
 [![Build Status](https://secure.travis-ci.org/soldair/node-tailfd.png)](http://travis-ci.org/soldair/node-tailfd)
 
-## goal
+## tailfd
 
-Tail a file. it should work great. This will continue to work even if a file is unlinked rotated or truncated. It is also ok if the path doesnt exist before watching it
+Tails a file. it should work great. it will continue to work even if a file is unlinked rotated or truncated. It is also ok if the path doesnt exist before watching it
 
-## use
+## Example
 
 ```js
 
-	var tail = require('tailfd').tail,
-	watcher = tail('/some.log',function(line,tailInfo){
-		//default line listener. optional.
-		console.log('line of data> ',line);
-	});
+var tail = require('tailfd').tail,
+watcher = tail('/some.log',function(line,tailInfo){
+  //default line listener. optional.
+  console.log('line of data> ',line);
+});
 
-	//if you want your process to exit. or use options.persistent = false
-	watcher.close();
+```
 
+when you are done
+
+```js
+watcher.close();
 ```
 
 ## install
@@ -28,7 +31,7 @@ Tail a file. it should work great. This will continue to work even if a file is 
 tailfd.tail(filename, [options], listener)
 
 - filename
-  this should be a regular file or non existent. the behavior is undefined in the case of a directory.
+  - this should be a regular file or non existent. the behavior is undefined in the case of a directory.
 
 - options. supported custom options are
 
@@ -70,7 +73,7 @@ tailfd.tail(filename, [options], listener)
 	```
 
 - callback
-  this is bound to the line event of the watcher. its optional.
+  - this is bound to the line event of the watcher. its optional.
 
 	```js
 	callback(line,tailInfo)
@@ -85,7 +88,7 @@ tailfd.tail(filename, [options], listener)
 - data
 	Buffer buffer, Object tailInfo
 
-#### events inherited from watchfd
+### events inherited from watchfd
 
 - change
 	- fs.Stats cur, fs.Stats prev
