@@ -81,6 +81,16 @@ tailfd.tail(filename, [options], listener)
 
   cur and prev are instances of fs.Stats
 
+- @returns
+  TailFD Watcher
+
+Watcher.pause
+- pause data and line events on all underlying descriptors
+
+Watcher.resume
+- get it goin again! =)
+
+
 ### events
 
 - line
