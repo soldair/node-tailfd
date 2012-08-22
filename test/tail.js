@@ -61,16 +61,16 @@ test('should be able to pause/resume tail',function(t){
   var log = './'+Date.now()+'.log';
   cleanup.push(log);
 
-  var watcher = tail(log)
-  ,buf = ''
-  ,timer = setTimeout(function(){
+  var watcher = tail(log),
+  buf = '',
+  timer = setTimeout(function(){
     t.fail('hard timeout of 10 seconds reached. something is wrong');
     t.end();
     watcher.close();
-  },10000)
-  ,c = 0
-  ,len = -1
-  ,checkBuf = function(){
+  },10000),
+  c = 0,
+  len = -1,
+  checkBuf = function(){
     if(len == buf.length) {
       t.ok(len == buf.length,'buffer should be expected length');
       t.end();
