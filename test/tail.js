@@ -51,28 +51,54 @@ test('should be able to tail something',function(t){
     }
   });
 
-  var ws = fs.createWriteStream(log,{flags:'w+'}),
-  loop = 10,
-  inter;
-
-  ws.on('open',function(){
-    inter = setInterval(function(){
-      if(!(--loop)) {
-        writeDone = 1;
-        clearInterval(inter);
-      }
-
-      try{
-        //_log('writing');
-        ws.write(new Buffer(Date.now()+"\n"));
-      } catch (e) {
-        _log(e+' >> '+e.stack);
-      }
-    },10);
+  writeLog(log,function(){
+    writeDone = 1;
   });
 
 });
 
+test('should be able to pause/resume tail',function(t){
+  var log = './'+Date.now()+'.log';
+  cleanup.push(log);
+
+  var watcher = tail(log)
+  ,buf = ''
+  ,timer = setTimeout(function(){
+    t.fail('hard timeout of 10 seconds reached. something is wrong');
+    t.end();
+    watcher.close();
+  },10000)
+  ,c = 0
+  ,len = -1
+  ,checkBuf = function(){
+    if(len == buf.length) {
+      t.ok(len == buf.length,'buffer should be expected length');
+      t.end();
+    }
+  }
+  ;
+
+  watcher.pause();
+  setTimeout(function(){
+    t.equals(c,0,'should not have emitted any data events while paused');
+    watcher.resume();
+  },500);
+
+  watcher.on('data',function(data){
+    c++;
+    buf += data.toString();
+    checkBuf();
+  });
+
+  writeLog(log,function(err,l){
+    writeDone = 1;
+    len = l;
+    process.nextTick(function(){
+      checkBuf();
+    });
+  });
+
+});
 
 
 process.on('exit',function(){
@@ -88,4 +114,30 @@ process.on('exit',function(){
     }
 });
 
+function writeLog(log,cb){
+  var ws = fs.createWriteStream(log,{flags:'w+'}),
+  loop = 10,
+  len = 0,
+  inter;
 
+  ws.on('open',function(){
+    inter = setInterval(function(){
+      if(!(--loop)) {
+        clearInterval(inter);
+        cb(null,len);
+        return;
+      }
+
+      try{
+        //_log('writing');
+        var b = new Buffer(Date.now()+"\n");
+        len += b.length;
+        ws.write(b);
+      } catch (e) {
+        _log(e+' >> '+e.stack);
+      }
+    },10);
+  });
+
+  return inter;
+}

@@ -1,4 +1,6 @@
 var watchfd = require('watchfd'),
+EventEmitter = require('events').EventEmitter,
+util = require('util'),
 fs = require('fs');
 
 
@@ -8,38 +10,130 @@ exports.tail = function(log,options,cb){
   watch,
   args = Array.prototype.slice.call(arguments);
 
+  // load args from args array
+  log = args.shift();
+  options = args.shift() || {};
+  cb = args.pop();
 
+  //support optional callback
+  if(typeof options == 'function') {
+    if(!cb) cb = options;
+    options = {};
+  }
+
+  //start watching
+  var tailer = new TailFd(log,options);
+
+  if(cb) {
+    tailer.on('line',function(line,tailInfo){
+      cb(line,tailInfo);    
+    });
+  }
+
+  return tailer;
+};
+
+function TailFd(log,options){
+  this.startWatching(log,options);
+}
+
+util.inherits(TailFd,EventEmitter);
+
+_ext(TailFd.prototype,{
+  q:[],
+  tails:{},
+  watch:null,
+  startWatching:function(log,options){
+    var z = this,
+    first = 0,
+    watch = this.watch = watchfd.watch(log,options,function(stat,prev,data){
+      //
+      // TODO
+      // test refactor from stat.ino to +data.fd 
+      //
+      if(!z.tails[stat.ino]) {
+        z.tails[stat.ino] = tailDescriptor(data);
+        z.tails[stat.ino].pos = stat.size;
+        // if this is the first time i have picked up any file attached to this fd
+        if (first) {
+          first = 0;
+          //apply hard start
+          if(typeof options.start != 'undefined') {
+            Z.tails[stat.ino].pos = options.start>stat.size?stat.size:options.start;
+          }
+
+          //apply offset
+          if(options.offset) {
+            z.tails[stat.ino].pos -= options.offset;
+          }
+
+          //dont let offset take read to invalid range
+          if(z.tails[stat.ino].pos > stat.size) {
+            z.tails[stat.ino].pos = stat.size;
+          } else if (tails[stat.ino].pos < 0) {
+            z.tails[stat.ino].pos = 0;
+          }
+        } else {
+          //new file descriptor at this file path but not the first one.
+          //an unlink+create or rename opperation happened.
+          //
+          // TODO
+          // if A file was moved to this path i should still start from 0.
+          // i better have flood control for this case because fs.read will seriously read all of that data from the file
+          //
+          z.tails[stat.ino].pos = 0;
+        }
+
+        z.tails[stat.ino].fd = data.fd;
+      }
+
+      z.tails[stat.ino].stat = stat;
+      z.tails[stat.ino].changed = 1;
+      z.readChangedFile(z.tails[stat.ino]);
+    });
+
+    watch.on('unlink',function(stat,prev,data){
+      if(z.tails[stat.ino]) {
+        z.tails[stat.ino].stat = stat;
+        z.tails[stat.ino].changed = 1;
+      }
+    });
+
+    watch.on('timeout',function(stat,data){
+      if(z.tails[stat.ino]) {
+        delete z.tails[stat.ino];
+        //cleanup queue will be in queue process.
+      }
+    });
+    
+    watch.on('data',function(buffer,tailInfo){
+
+      tailInfo.buf += buffer.toString();
+      var lines = tailInfo.buf.split(options.delimiter||"\n");
+      tailInfo.buf = lines.pop();
+
+      for(var i=0,j=lines.length;i<j;++i) {
+        z.watch.emit('line',lines[i],tailInfo);
+        //call user specified callback
+        if(cb) cb.call(this,lines[i],tailInfo);
+      }
+    });
+  },
   //this emits the data events on the watcher emitter for all fds
-  function readChangedFile(tailInfo){
+  readChangedFile:function(tailInfo){
+    var z = this;
 
     if(tailInfo) {
-      q.push(tailInfo);
-    }
-
-    //avoiding the jshint "dont create functions in a loop"
-    // executed in the context of a tailInfo object
-    function readTail(len) {
-      var self = this;
-
-      if(len){
-        self.reading = 1;
-        fs.read(self.fd, new Buffer(len), 0, len, self.pos, function(err,bytesRead,buffer) {
-          self.reading = 0;
-          self.pos += bytesRead;
-
-          watch.emit('data',buffer,self);
-          //handle any queued change events
-        });
-      }
+      z.q.push(tailInfo);
     }
 
     var ti; 
     //for all changed fds fire readStream
-    for(var i = 0;i < q.length;++i) {
-      ti = q[i];
-      if (!tails[ti.stat.ino]) {
+    for(var i = 0;i < z.q.length;++i) {
+      ti = z.q[i];
+      if (!z.tails[ti.stat.ino]) {
         //remove timed out file tail from q
-        q.splice(i,1);
+        z.q.splice(i,1);
         --i;
         continue;
       }
@@ -56,92 +150,57 @@ exports.tail = function(log,options,cb){
 
       var len = ti.stat.size-ti.pos;
       //remove from queue because im doing this work.
-      q.splice(i,1);
+      z.q.splice(i,1);
       --i;
 
-      readTail.call(ti,len);
+      z.readTail(ti,len);
     }
-  }
+  },
+  readTail:function(tailInfo,len) {
+    var z = this;
+    if(len){
+      tailInfo.reading = 1;
+      //TODO
+      // if len is too long i need to buffer it in chunks
+      //
+      fs.read(tailInfo.fd, new Buffer(len), 0, len, z.pos, function(err,bytesRead,buffer) {
+        tailInfo.reading = 0;
+        tailInfo.pos += bytesRead;
 
-  // load args from args array
-  log = args.shift();
-  options = args.shift() || {};
-  cb = args.pop();
-
-  //support optional callback
-  if(typeof options == 'function') {
-    if(!cb) cb = options;
-    options = {};
-  }
-  var first = 1;
-  //start watching
-  watch = watchfd.watch(log,options,function(stat,prev,data){
-    if(!tails[stat.ino]) {
-      tails[stat.ino] = tailDescriptor(data);
-      tails[stat.ino].pos = stat.size;
-      // if this is the first time i have picked up any file attached to this fd
-      if (first) {
-        first = 0;
-        //apply hard start
-        if(typeof options.start != 'undefined') {
-          tails[stat.ino].pos = options.start>stat.size?stat.size:options.start;
-        }
-
-        //apply offset
-        if(options.offset) {
-          tails[stat.ino].pos -= options.offset;
-        }
-
-        //dont let offset take read to invalid range
-        if(tails[stat.ino].pos > stat.size) {
-          tails[stat.ino].pos = stat.size;
-        } else if (tails[stat.ino].pos < 0) {
-          tails[stat.ino].pos = 0;
-        }
-      } else {
-        //new file descriptor at this file path but not the first one.
-        //an unlink+create or rename opperation happened.
-        //should i start from 0 if some file with data in it was moved to my watched path?
-        tails[stat.ino].pos = 0;
-      }
-
-      tails[stat.ino].fd = data.fd;
+        //
+        // TODO
+        // provide a stream event for each distinct file descriptor
+        // i cant stream multiple file descriptor's data through the same steam object because mixing the data makes it not make sense.
+        //
+        // this cannot emit data events here because to be a stream the above case has to make sense.
+        //
+        z.emit('data',buffer,tailInfo);
+      });
     }
-
-    tails[stat.ino].stat = stat;
-    tails[stat.ino].changed = 1;
-    readChangedFile(tails[stat.ino]);
-  });
-
-  watch.on('unlink',function(stat,prev,data){
-    if(tails[stat.ino]) {
-      tails[stat.ino].stat = stat;
-      tails[stat.ino].changed = 1;
-    }
-  });
-
-  watch.on('timeout',function(stat,data){
-    if(tails[stat.ino]) {
-      delete tails[stat.ino];
-      //cleanup queue will be in queue process.
-    }
-  });
-  
-  watch.on('data',function(buffer,tailInfo){
-
-    tailInfo.buf += buffer.toString();
-    var lines = tailInfo.buf.split(options.delimiter||"\n");
-    tailInfo.buf = lines.pop();
-
-    for(var i=0,j=lines.length;i<j;++i) {
-      watch.emit('line',lines[i],tailInfo);
-      //call user specified callback
-      if(cb) cb.call(this,lines[i],tailInfo);
-    }
-  });
-
-  return watch;
-};
+  },
+  //
+  // streamy methods
+  //
+  pause:function() {
+    this.watch.pause();
+  },
+  resume:function(){
+    this.watch.resume();
+  },
+  destroy:function(){
+    this.close();
+  },
+  destroySoon:function(){
+    this.close();
+  },
+  close:function(){
+    this.readable = false;
+    this.emit('close');
+    this.watch.close();
+  },
+  writable:false,
+  readable:true
+});
 
 function tailDescriptor(data){
   var o = {
@@ -154,4 +213,7 @@ function tailDescriptor(data){
   return o;
 }
 
-
+function _ext(o,o2){
+  for(var i in o2) if(o2.hasOwnProperty(i)) o[i] = o2[i];
+  return o;
+}
