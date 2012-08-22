@@ -29,10 +29,10 @@ test('should be able to tail something',function(t){
   prevpos = 0,
   prevdata = '',
   timer = setTimeout(function(){
-    t.fail('hard timeout of 10 seconds reached. something is wrong');
+    t.fail('hard timeout of 20 seconds reached. something is wrong');
     t.end();
     watcher.close();
-  },10000);
+  },20000);
 
   watcher.on('data',function(buffer,tailInfo){
     buf += buffer.toString();
@@ -64,10 +64,10 @@ test('should be able to pause/resume tail',function(t){
   var watcher = tail(log),
   buf = '',
   timer = setTimeout(function(){
-    t.fail('hard timeout of 10 seconds reached. something is wrong');
+    t.fail('hard timeout of 20 seconds reached. something is wrong');
     t.end();
     watcher.close();
-  },10000),
+  },20000),
   c = 0,
   len = -1,
   checkBuf = function(){
