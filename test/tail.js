@@ -32,8 +32,16 @@ test('should be able to tail something',function(t){
     t.fail('hard timeout of 20 seconds reached. something is wrong');
     t.end();
     watcher.close();
-  },20000);
-
+  },20000)
+  len = -1,
+  checkBuf = function(){
+    if(len == buf.length) {
+      watcher.close();
+      clearTimeout(timer);
+      t.ok(len == buf.length,'buffer should be expected length');
+      t.end();
+    }
+  }
   watcher.on('data',function(buffer,tailInfo){
     buf += buffer.toString();
     prevdata = buffer.toString();
@@ -45,20 +53,20 @@ test('should be able to tail something',function(t){
     prevpos = tailInfo.pos;
 
     if(writeDone){
-      watcher.close();
-      t.end();
-      clearTimeout(timer);
+      checkBuf()
     }
   });
 
-  writeLog(log,function(){
+  writeLog(log,function(err,l){
+    len = l;
     writeDone = 1;
+    checkBuf();
   });
 
 });
 
 test('should be able to pause/resume tail',function(t){
-  var log = './'+Date.now()+'.log';
+  var log = './'+Date.now()+'-'+Math.random()+'.log';
   cleanup.push(log);
 
   var watcher = tail(log),
@@ -72,6 +80,8 @@ test('should be able to pause/resume tail',function(t){
   len = -1,
   checkBuf = function(){
     if(len == buf.length) {
+      clearTimeout(timer);
+      watcher.close();
       t.ok(len == buf.length,'buffer should be expected length');
       t.end();
     }
