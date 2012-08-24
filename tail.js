@@ -4,7 +4,7 @@ util = require('util'),
 fs = require('fs');
 
 
-exports.tail = function(log,options,cb){
+module.exports = function(log,options,cb){
   var tails = {},
   q = [],
   watch,
@@ -33,6 +33,8 @@ exports.tail = function(log,options,cb){
   return tailer;
 };
 
+module.exports.tail = module.exports;
+
 function TailFd(log,options){
   this.startWatching(log,options);
 }
@@ -45,7 +47,7 @@ _ext(TailFd.prototype,{
   watch:null,
   startWatching:function(log,options){
     var z = this,
-    first = 0,
+    first = 1,
     watch = this.watch = watchfd.watch(log,options,function(stat,prev,data){
       //
       // TODO
@@ -59,7 +61,7 @@ _ext(TailFd.prototype,{
           first = 0;
           //apply hard start
           if(typeof options.start != 'undefined') {
-            Z.tails[stat.ino].pos = options.start>stat.size?stat.size:options.start;
+            z.tails[stat.ino].pos = options.start>stat.size?stat.size:options.start;
           }
 
           //apply offset
@@ -70,7 +72,7 @@ _ext(TailFd.prototype,{
           //dont let offset take read to invalid range
           if(z.tails[stat.ino].pos > stat.size) {
             z.tails[stat.ino].pos = stat.size;
-          } else if (tails[stat.ino].pos < 0) {
+          } else if (z.tails[stat.ino].pos < 0) {
             z.tails[stat.ino].pos = 0;
           }
         } else {
@@ -97,6 +99,7 @@ _ext(TailFd.prototype,{
         z.tails[stat.ino].stat = stat;
         z.tails[stat.ino].changed = 1;
       }
+      z.emit.apply(z,arguments);
     });
 
     watch.on('timeout',function(stat,data){
@@ -104,20 +107,21 @@ _ext(TailFd.prototype,{
         delete z.tails[stat.ino];
         //cleanup queue will be in queue process.
       }
+      z.emit.apply(z,arguments);
     });
     
-    watch.on('data',function(buffer,tailInfo){
+    this.on('data',function(buffer,tailInfo){
 
       tailInfo.buf += buffer.toString();
       var lines = tailInfo.buf.split(options.delimiter||"\n");
       tailInfo.buf = lines.pop();
 
       for(var i=0,j=lines.length;i<j;++i) {
-        z.watch.emit('line',lines[i],tailInfo);
-        //call user specified callback
-        if(cb) cb.call(this,lines[i],tailInfo);
+        z.emit('line',lines[i],tailInfo);
       }
     });
+
+    this.maxBytesPerRead = options.maxBytesPerRead || 10240;
   },
   //this emits the data events on the watcher emitter for all fds
   readChangedFile:function(tailInfo){
@@ -160,22 +164,42 @@ _ext(TailFd.prototype,{
     var z = this;
     if(len){
       tailInfo.reading = 1;
-      //TODO
-      // if len is too long i need to buffer it in chunks
-      //
-      fs.read(tailInfo.fd, new Buffer(len), 0, len, z.pos, function(err,bytesRead,buffer) {
-        tailInfo.reading = 0;
-        tailInfo.pos += bytesRead;
+      
+      var readJob = function(len){
+        console.log('read job for ',len,' bytes from ',tailInfo.pos);
+        //binding.read(fd, buffer, offset, length, position, wrapper);
+        fs.read(tailInfo.fd, new Buffer(len), 0, len, tailInfo.pos, function(err,bytesRead,buffer) {
+          tailInfo.pos += bytesRead;
+          console.log('calledback!',bytesRead);
+          //
+          // TODO
+          // provide a stream event for each distinct file descriptor
+          // i cant stream multiple file descriptor's data through the same steam object because mixing the data makes it not make sense.
+          //
+          // this cannot emit data events here because to be a stream the above case has to make sense.
+          //
+          z.emit('data',buffer,tailInfo);
+          done();
+        });
+      },
+      done = function(){
+        if(!len) {
+          tailInfo.reading = 0;
+          console.log('done reading');
+          return;
+        }
 
-        //
-        // TODO
-        // provide a stream event for each distinct file descriptor
-        // i cant stream multiple file descriptor's data through the same steam object because mixing the data makes it not make sense.
-        //
-        // this cannot emit data events here because to be a stream the above case has to make sense.
-        //
-        z.emit('data',buffer,tailInfo);
-      });
+        var toRead = z.maxBytesPerRead;
+        if(len < toRead) {
+          toRead = len;
+        }
+        len -= toRead;
+        
+        readJob(toRead);
+      }
+      ;
+      done();
+
     }
   },
   //
