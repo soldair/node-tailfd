@@ -70,7 +70,7 @@ test('should be able to pause/resume tail',function(t){
   var log = './'+Date.now()+'-'+Math.random()+'.log';
   cleanup.push(log);
 
-  var watcher = tail(log),
+  var watcher = tail(log,{start:0}),
   buf = '',
   timer = setTimeout(function(){
     t.fail('hard timeout of 20 seconds reached. something is wrong');
