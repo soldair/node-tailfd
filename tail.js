@@ -166,11 +166,11 @@ _ext(TailFd.prototype,{
       tailInfo.reading = 1;
       
       var readJob = function(len){
-        console.log('read job for ',len,' bytes from ',tailInfo.pos);
+        //console.log('read job for ',len,' bytes from ',tailInfo.pos);
         //binding.read(fd, buffer, offset, length, position, wrapper);
         fs.read(tailInfo.fd, new Buffer(len), 0, len, tailInfo.pos, function(err,bytesRead,buffer) {
           tailInfo.pos += bytesRead;
-          console.log('calledback!',bytesRead);
+          //console.log('calledback!',bytesRead);
           //
           // TODO
           // provide a stream event for each distinct file descriptor
@@ -185,7 +185,7 @@ _ext(TailFd.prototype,{
       done = function(){
         if(!len) {
           tailInfo.reading = 0;
-          console.log('done reading');
+          //console.log('done reading');
           return;
         }
 
