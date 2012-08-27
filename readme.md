@@ -20,6 +20,7 @@ when you are done
 
 ```js
 watcher.close();
+
 ```
 
 ## install
@@ -44,8 +45,23 @@ tailfd.tail(filename, [options], listener)
 	"offset":0,
 	//optional.  offset is negtively applied to the start position
 
-	"delimiter":"\n"
+	"delimiter":"\n",
 	//optional. defaults to newline but can be anything
+
+	"maxBytesPerRead":10240,
+	// optional. this is how much data will be read off of a file descriptor in one call to fs.read. defaults to 10k.
+	// the maximum data buffer size for each tail is 
+	// 	maxBufferPerRead + the last incomplete line from the previous read.length
+
+	"readAttempts":3,
+	//optional. if fs.read cannot read the offset from a file it will try attempts times before is gives up with a range-unreadable event
+	// defaults to 3 attempts
+
+	"maxLineLength":102400
+	// optional. defaults to 1 mb
+	//  if the line excedes this length it's data will be emitted as a line-part event
+        //  this is a failsafe so that a single line cant eat all of the memory.
+	//  all gathered line-parts are complete with the value of the next line event for that file descriptor.
 
 	}
 
@@ -70,6 +86,7 @@ tailfd.tail(filename, [options], listener)
 	"interval":0, //defaults 0
 	//interval indicates how often the target should be polled, in milliseconds. (On Linux systems with inotify, interval is ignored.) 
 	}
+
 	```
 
 - callback
@@ -77,6 +94,7 @@ tailfd.tail(filename, [options], listener)
 
 	```js
 	callback(line,tailInfo)
+
 	```
 
   cur and prev are instances of fs.Stats
@@ -94,9 +112,16 @@ Watcher.resume
 ### events
 
 - line
-	String line, Object tailInfo
+	- String line, Object tailInfo
 - data
-	Buffer buffer, Object tailInfo
+	- Buffer buffer, Object tailInfo
+- line-part
+	- String linePart, Object tailInfo
+		- if line length excedes the options.maxLineLength the linePart is emitted. 
+		  This is to prevent cases where unexpected values in logs can eat all of the memory.
+- range-unreadable
+	- Array errors, Number fromPos,Number toPos,Object tailInfo
+		- After configured readAttempts the offset could still not be read. This range will be skipped
 
 ### events inherited from watchfd
 

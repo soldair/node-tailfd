@@ -85,7 +85,7 @@ _ext(TailFd.prototype,{
           //
           z.tails[stat.ino].pos = 0;
         }
-
+        z.tails[stat.ino].linePos = z.tails[stat.ino].pos;
         z.tails[stat.ino].fd = data.fd;
       }
 
@@ -111,17 +111,47 @@ _ext(TailFd.prototype,{
     });
     
     this.on('data',function(buffer,tailInfo){
+      
+      tailInfo.buf += tailInfo.buf.toString()+buffer.toString();
 
-      tailInfo.buf += buffer.toString();
       var lines = tailInfo.buf.split(options.delimiter||"\n");
+      var b;
+
       tailInfo.buf = lines.pop();
 
       for(var i=0,j=lines.length;i<j;++i) {
-        z.emit('line',lines[i],tailInfo);
+        // binary length. =/ not efficient this way but i dont want to emit lines as buffers right now
+        b = new Buffer(lines[i]+(options.delimiter||"\n"));
+        tailInfo.linePos += b.length;
+        if(tailInfo.linePos > tailInfo.pos) {
+          console.log('i have a bug! tailinfo line position in source file is greater than the position in the source file!');
+          tailInfo.linePos = tailInfo.pos;
+        }
+        // copy tailinfo with line position so events can be handles async and preserve state
+        z.emit('line',lines[i],_ext({},tailInfo));
       }
+
+      // in order to make last line length reflect the binary length buf has to be packed into a Buffer.
+      tailInfo.buf = new Buffer(tailInfo.buf);
+
+      if(tailInfo.buf.length >= z.maxLineLength){
+        z.emit('line-part',tailInfo.buf,tailInfo);
+        tailInfo.linePos += tailInfo.buf.length;
+        tailInfo.buf = '';
+      }
+
+      if(tailInfo.linePos < (tailInfo.pos-tailInfo.buf.length)) {
+        console.log('i have a bug! tailinfo line position in source file is less than the ammount of data i should have sent!');
+      }
+
     });
 
+    //10k max per read
     this.maxBytesPerRead = options.maxBytesPerRead || 10240;
+    // 1mb max per line
+    this.maxLineLength = options.maxLineLength || 102400;
+    // 3 read attempts per range
+    this.readAttempts = options.readAttempts||3;
   },
   //this emits the data events on the watcher emitter for all fds
   readChangedFile:function(tailInfo){
@@ -164,26 +194,44 @@ _ext(TailFd.prototype,{
     var z = this;
     if(len){
       tailInfo.reading = 1;
-      
+      //retry attempts per range.
+      var attempts = [];
+
       var readJob = function(len){
         //console.log('read job for ',len,' bytes from ',tailInfo.pos);
-        //binding.read(fd, buffer, offset, length, position, wrapper);
         fs.read(tailInfo.fd, new Buffer(len), 0, len, tailInfo.pos, function(err,bytesRead,buffer) {
+          if(err) {
+            attempts.push(err);
+            //
+            // after configured number of attempts emit range-unreadable and move to next
+            //
+            if(attempts.length >= (z.readAttempts || 3)) {
+              z.emit('range-unreadable',attempts,tailInfo.pos,len,tailInfo);
+              // skip range
+              tailInfo.pos += len;
+              attempts = [];
+            }
+            done();
+            return;  
+          }
+
           tailInfo.pos += bytesRead;
-          //console.log('calledback!',bytesRead);
+          attempts = [];
           //
           // TODO
           // provide a stream event for each distinct file descriptor
           // i cant stream multiple file descriptor's data through the same steam object because mixing the data makes it not make sense.
-          //
-          // this cannot emit data events here because to be a stream the above case has to make sense.
+          // this cannot emit data events here? because to be a stream the above case has to make sense.
           //
           z.emit('data',buffer,tailInfo);
           done();
         });
       },
       done = function(){
-        if(!len) {
+        //
+        //if paused i should not continue to buffer data events.
+        //
+        if(!len || z.watch.paused) {  
           tailInfo.reading = 0;
           //console.log('done reading');
           return;
@@ -201,6 +249,17 @@ _ext(TailFd.prototype,{
       done();
 
     }
+  },         
+  //
+  // return the total line buffer length from all active tails
+  //
+  lineBufferLength:function(){
+    var z = this;
+    var l = 0;
+    Object.keys(z.tails).forEach(function(k) {
+      l += (z.tails[k].buf||'').length;
+    });
+    return l;
   },
   //
   // streamy methods
@@ -230,6 +289,7 @@ function tailDescriptor(data){
   var o = {
     stat:null,
     pos:0,
+    linePos:0,
     fd:data.fd,
     buf:''
   };
