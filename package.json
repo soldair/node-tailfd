@@ -27,6 +27,6 @@
     "node": ">=0.8.0"
   },
   "dependencies": {
-	"watchfd":"~0.0.7"
+	"watchfd":"~0.0.8"
   }
 }

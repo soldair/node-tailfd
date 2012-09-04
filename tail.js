@@ -54,10 +54,12 @@ _ext(TailFd.prototype,{
       // test refactor from stat.ino to +data.fd 
       //
       if(!z.tails[stat.ino]) {
+
         z.tails[stat.ino] = tailDescriptor(data);
         z.tails[stat.ino].pos = stat.size;
         // if this is the first time i have picked up any file attached to this fd
         if (first) {
+
           first = 0;
           //apply hard start
           if(typeof options.start != 'undefined') {
@@ -156,7 +158,6 @@ _ext(TailFd.prototype,{
   //this emits the data events on the watcher emitter for all fds
   readChangedFile:function(tailInfo){
     var z = this;
-
     if(tailInfo) {
       z.q.push(tailInfo);
     }
@@ -165,15 +166,16 @@ _ext(TailFd.prototype,{
     //for all changed fds fire readStream
     for(var i = 0;i < z.q.length;++i) {
       ti = z.q[i];
+
+      if(ti.reading) {
+        //still reading file
+        continue;
+      }
+
       if (!z.tails[ti.stat.ino]) {
         //remove timed out file tail from q
         z.q.splice(i,1);
         --i;
-        continue;
-      }
-
-      if(ti.reading) {
-        //still reading file
         continue;
       }
 
@@ -206,6 +208,7 @@ _ext(TailFd.prototype,{
             // after configured number of attempts emit range-unreadable and move to next
             //
             if(attempts.length >= (z.readAttempts || 3)) {
+              
               z.emit('range-unreadable',attempts,tailInfo.pos,len,tailInfo);
               // skip range
               tailInfo.pos += len;
@@ -231,9 +234,8 @@ _ext(TailFd.prototype,{
         //
         //if paused i should not continue to buffer data events.
         //
-        if(!len || z.watch.paused) {  
+        if(!len || z.watch.paused) {
           tailInfo.reading = 0;
-          //console.log('done reading');
           return;
         }
 

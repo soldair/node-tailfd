@@ -92,7 +92,8 @@ test('should be able to pause/resume tail',function(t){
   watcher.pause();
   setTimeout(function(){
     t.equals(c,0,'should not have emitted any data events while paused');
-    watcher.resume();
+    watcher.resume(); 
+
   },500);
 
   watcher.on('data',function(data){
@@ -109,6 +110,14 @@ test('should be able to pause/resume tail',function(t){
     });
   });
 
+  watcher.on('range-unreadable',function(){
+    console.log(arguments);
+
+    clearTimeout(timer);
+    t.fail('should not get range unreadable error');
+    t.end();
+    watcher.close();
+  });
 });
 
 
