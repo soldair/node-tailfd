@@ -1,5 +1,5 @@
 [![Build Status](https://secure.travis-ci.org/soldair/node-tailfd.png)](http://travis-ci.org/soldair/node-tailfd)
-
+ 
 ## tailfd
 
 Tails a file. it should work great. it will continue to work even if a file is unlinked rotated or truncated. It is also ok if the path doesnt exist before watching it
