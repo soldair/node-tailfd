@@ -120,13 +120,19 @@ _ext(TailFd.prototype,{
       var b;
 
       tailInfo.buf = lines.pop();
+      
+      tailInfo.linePos = tailInfo.pos-tailInfo.buf.length;
+
 
       for(var i=0,j=lines.length;i<j;++i) {
         // binary length. =/ not efficient this way but i dont want to emit lines as buffers right now
         b = new Buffer(lines[i]+(options.delimiter||"\n"));
-        tailInfo.linePos += b.length;
+
+        if(!tailInfo.linePos) tailInfo.linePos = 0;
+
         if(tailInfo.linePos > tailInfo.pos) {
           console.log('i have a bug! tailinfo line position in source file is greater than the position in the source file!');
+          console.log('linePos:',tailInfo.linePos-b.length,'pos:',tailInfo.pos);
           tailInfo.linePos = tailInfo.pos;
         }
         // copy tailinfo with line position so events can be handles async and preserve state
@@ -200,7 +206,6 @@ _ext(TailFd.prototype,{
       var attempts = [];
 
       var readJob = function(len){
-        //console.log('read job for ',len,' bytes from ',tailInfo.pos);
         fs.read(tailInfo.fd, new Buffer(len), 0, len, tailInfo.pos, function(err,bytesRead,buffer) {
           if(err) {
             attempts.push(err);
