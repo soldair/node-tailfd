@@ -239,8 +239,14 @@ _ext(TailFd.prototype,{
         //
         //if paused i should not continue to buffer data events.
         //
-        if(!len || z.watch.paused) {
+
+        if(!len || z.watch.paused){
           tailInfo.reading = 0;
+          if(z.watch.paused && len){
+            // if i am paused mid read requeue remaining.
+            z.q.push(tailInfo);
+            //console.log('requeued remaining read because im paused');
+          }
           return;
         }
 
@@ -276,6 +282,8 @@ _ext(TailFd.prototype,{
   },
   resume:function(){
     this.watch.resume();
+    // i may have been stopped mid read so changes may still need to be read.
+    this.readChangedFile();
   },
   destroy:function(){
     this.close();
