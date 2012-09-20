@@ -24,7 +24,7 @@
     "jshint": "0.5.x"
   },
   "engines": {
-    "node": ">=0.8.0"
+    "node": ">=0.6.0"
   },
   "dependencies": {
 	"watchfd":"~0.0.9"
