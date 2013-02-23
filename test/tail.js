@@ -78,7 +78,7 @@ test("should be able to write half lines",function(t){
   checkBuf = function(){
     watcher.close();
     t.equals(len,buf.length,'buffer should be expected length when writing incomplete lines.');
-    t.equals(buf,'HIHO',' should have written HIHO')
+    t.equals(buf,'HIHO',' should have written HIHO');
     t.end();
   }
   ;
