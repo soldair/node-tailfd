@@ -38,7 +38,7 @@ test('should be able to tail something',function(t){
     if(len == buf.length) {
       watcher.close();
       clearTimeout(timer);
-      t.ok(len == buf.length,'buffer should be expected length');
+      t.equals(len,buf.length,'buffer should be expected length');
       t.end();
     }
   };
@@ -66,6 +66,40 @@ test('should be able to tail something',function(t){
 
 });
 
+
+test("should be able to write half lines",function(t){
+  var log = './'+Date.now()+'-'+Math.random()+'.log';
+  cleanup.push(log);
+
+  var watcher = tail(log,{start:0}),
+  buf = '',
+  c = 0,
+  len = 4,
+  checkBuf = function(){
+    watcher.close();
+    t.equals(len,buf.length,'buffer should be expected length when writing incomplete lines.');
+    t.equals(buf,'HIHO',' should have written HIHO')
+    t.end();
+  }
+  ;
+  watcher.on('line',function(data){
+    buf += data.toString();
+    checkBuf();
+  });
+
+  watcher.on('data',function(){
+    if(!c) { 
+      ws.write('HO\n');
+      ws.end();
+    }
+    c++;
+  });
+
+  var ws = fs.createWriteStream(log);
+  ws.write('HI');
+
+});
+
 test('should be able to pause/resume tail',function(t){
   var log = './'+Date.now()+'-'+Math.random()+'.log';
   cleanup.push(log);
@@ -83,7 +117,7 @@ test('should be able to pause/resume tail',function(t){
     if(len == buf.length) {
       clearTimeout(timer);
       watcher.close();
-      t.ok(len == buf.length,'buffer should be expected length');
+      t.equals(len,buf.length,'buffer should be expected length');
       t.end();
     }
   }

@@ -1,7 +1,7 @@
 {
   "name": "tailfd",
   "description": "Tail a file. This will continue to work even if a file is unlinked rotated or truncated. It is also ok if the path doesnt exist before watching it",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "author": "Ryan Day <soldair@gmail.com>",
   "keywords": [
     "watch",

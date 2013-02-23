@@ -114,7 +114,7 @@ _ext(TailFd.prototype,{
     
     this.on('data',function(buffer,tailInfo){
       
-      tailInfo.buf += tailInfo.buf.toString()+buffer.toString();
+      tailInfo.buf = tailInfo.buf.toString()+buffer.toString();
 
       var lines = tailInfo.buf.split(options.delimiter||"\n");
       var b;
