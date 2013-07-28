@@ -48,6 +48,7 @@ _ext(TailFd.prototype,{
   startWatching:function(log,options){
     var z = this,
     first = 1,
+    noent = 0,
     watch = this.watch = watchfd.watch(log,options,function(stat,prev,data){
       //
       // TODO
@@ -64,6 +65,8 @@ _ext(TailFd.prototype,{
           //apply hard start
           if(typeof options.start != 'undefined') {
             z.tails[stat.ino].pos = options.start>stat.size?stat.size:options.start;
+          } else if(noent) {
+            z.tails[stat.ino].pos = 0;
           }
 
           //apply offset
@@ -94,6 +97,11 @@ _ext(TailFd.prototype,{
       z.tails[stat.ino].stat = stat;
       z.tails[stat.ino].changed = 1;
       z.readChangedFile(z.tails[stat.ino]);
+    });
+
+    watch.on('noent',function(){
+      // if the file didnt exist when the watch started and its the first time start should be 0.
+      noent = 1;
     });
 
     watch.on('unlink',function(stat,prev,data){

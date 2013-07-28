@@ -1,7 +1,7 @@
 {
   "name": "tailfd",
   "description": "Tail a file. This will continue to work even if a file is unlinked rotated or truncated. It is also ok if the path doesnt exist before watching it",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "author": "Ryan Day <soldair@gmail.com>",
   "keywords": [
     "watch",
@@ -17,7 +17,7 @@
     "url": "git://github.com/soldair/node-tailfd.git"
   },
   "scripts": {
-    "test": "./test.sh"
+    "test": "tap test/*.js"
   },
   "devDependencies": {
     "tap": "*",
@@ -27,6 +27,6 @@
     "node": ">=0.6.0"
   },
   "dependencies": {
-	"watchfd":"~0.0.9"
+	"watchfd":"~0.0.12"
   }
 }

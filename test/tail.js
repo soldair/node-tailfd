@@ -71,7 +71,7 @@ test("should be able to write half lines",function(t){
   var log = './'+Date.now()+'-'+Math.random()+'.log';
   cleanup.push(log);
 
-  var watcher = tail(log,{start:0}),
+  var watcher = tail(log),
   buf = '',
   c = 0,
   len = 4,
